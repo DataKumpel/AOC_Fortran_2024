@@ -30,7 +30,7 @@ PROGRAM main
 
     CALL read_corrupted_memory("inputs/day_03_inputs.txt", corrupted_memory, memory_length)
 
-    WRITE(*, *) "Mul result:", mul_result(corrupted_memory, memory_length)
+!    WRITE(*, *) "Mul result:", mul_result(corrupted_memory, memory_length)
 
     DEALLOCATE(corrupted_memory)
 
@@ -56,7 +56,6 @@ SUBROUTINE read_corrupted_memory(filename, content, content_length)
     content_length = 0
     DO
         READ(f_unit, "(A)", iostat=io_stat, advance="no") chr
-        !WRITE(*, *) chr
         IF(io_stat /= 0) EXIT
         content_length = content_length + 1
     ENDDO
@@ -71,8 +70,6 @@ SUBROUTINE read_corrupted_memory(filename, content, content_length)
         READ(f_unit, "(A)", advance="no", iostat=io_stat) content(i)
         IF(io_stat /= 0) EXIT
     ENDDO
-
-    !WRITE(*, *) content
 
     CLOSE(f_unit)
 
@@ -89,22 +86,29 @@ INTEGER FUNCTION mul_result(content, content_length)
     INTEGER :: index
     INTEGER :: length
     INTEGER :: n1, n2
-    INTEGER :: i
-    CHARACTER, DIMENSION(10) :: numbers
-    CHARACTER(LEN=4) :: pattern
+    INTEGER :: i, j
+    CHARACTER(LEN=10) :: numbers
+    CHARACTER(LEN=4)  :: pattern
     !=============================================================================================!
     
     mul_result = 0
 
     MUL_FINDER: DO index = 1, content_length - 4
-        
-        IF(    content(index    ) == "m" &
-        &.AND. content(index + 1) == "u" &
-        &.AND. content(index + 2) == "l" &
-        &.AND. content(index + 3) == "(") THEN
+        DO j = 1, 4
+            pattern(j:j) = content(index + j)
+        ENDDO
+
+        WRITE(*, *) pattern
+
+        IF(pattern == "mul(") THEN
             DO length = 0, 8
                 IF(content(index + 4 + length) == ")") THEN
-                    numbers = content(index + 4:index + 3 + length)
+                    i = 1
+                    DO j = index + 4, index + 3 + length
+                        numbers(i:i) = content(j)
+                        i = i + 1
+                    ENDDO
+
                     READ(numbers, *) n1, n2
                     mul_result = mul_result + n1 * n2
                     CYCLE MUL_FINDER
