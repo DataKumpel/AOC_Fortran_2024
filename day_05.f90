@@ -29,21 +29,32 @@ PROGRAM main
         SUBROUTINE calc_middle_sum(pages_to_produce)
             INTEGER, DIMENSION(:, :), INTENT(IN) :: pages_to_produce
         END SUBROUTINE calc_middle_sum
+
+        SUBROUTINE reorder_incorrect_updates(incorrect_pages, rules)
+            INTEGER, DIMENSION(:, :), INTENT(INOUT) :: incorrect_pages
+            INTEGER, DIMENSION(:, :), INTENT(IN)    :: rules
+        END SUBROUTINE reorder_incorrect_updates
     END INTERFACE
     !=============================================================================================!
     
     test = .FALSE.
     IF(test)       file = ex_file
     IF(.NOT. test) file = in_file
-
+    
     CALL read_safety_protocol(TRIM(file), page_ordering_rules, pages_to_produce)
+    
+    !----- PART I -----!
     CALL check_update(pages_to_produce, page_ordering_rules, correct_pages, incorrect_pages)
     CALL calc_middle_sum(correct_pages)
 
+    !----- PART II -----!
+    CALL reorder_incorrect_updates(incorrect_pages, page_ordering_rules)
+    CALL calc_middle_sum(incorrect_pages)
+
     IF(ALLOCATED(page_ordering_rules)) DEALLOCATE(page_ordering_rules)
-    IF(ALLOCATED(pages_to_produce)) DEALLOCATE(pages_to_produce)
-    IF(ALLOCATED(correct_pages)) DEALLOCATE(correct_pages)
-    IF(ALLOCATED(incorrect_pages)) DEALLOCATE(incorrect_pages)
+    IF(ALLOCATED(pages_to_produce))    DEALLOCATE(pages_to_produce)
+    IF(ALLOCATED(correct_pages))       DEALLOCATE(correct_pages)
+    IF(ALLOCATED(incorrect_pages))     DEALLOCATE(incorrect_pages)
 
 END PROGRAM main
 
@@ -178,14 +189,20 @@ SUBROUTINE check_update(pages_to_produce, page_ordering_rules, correct_pages, in
     ENDDO
 
     ALLOCATE(correct_pages(COUNT(is_correct), SIZE(pages_to_produce, 2)))
+    ALLOCATE(incorrect_pages(SIZE(pages_to_produce, 1) - COUNT(is_correct), SIZE(pages_to_produce, 2)))
     
     j = 1
+    k = 1
     DO i = 1, SIZE(is_correct)
         num_pages = pages_to_produce(i, 1)
         IF(is_correct(i)) THEN 
             correct_pages(j, 1)  = num_pages
             correct_pages(j, 2:num_pages + 1) = pages_to_produce(i, 2:num_pages + 1)
             j = j + 1
+        ELSE
+            incorrect_pages(k, 1) = num_pages
+            incorrect_pages(k, 2:num_pages + 1) = pages_to_produce(i, 2:num_pages + 1)
+            k = k + 1
         ENDIF
     ENDDO
 
@@ -214,3 +231,60 @@ SUBROUTINE calc_middle_sum(pages_to_produce)
     WRITE(*, *) "SUM OF MIDDLE PAGES:", middle_sum
 
 END SUBROUTINE calc_middle_sum
+
+
+SUBROUTINE reorder_incorrect_updates(incorrect_pages, rules)
+
+    IMPLICIT NONE
+    !=============================================================================================!
+    INTEGER, DIMENSION(:, :), INTENT(INOUT) :: incorrect_pages
+    INTEGER, DIMENSION(:, :), INTENT(IN)    :: rules
+    
+    INTEGER :: i, j, k
+    INTEGER :: num_pages
+    INTEGER :: n1, n2
+    INTEGER :: index_1, index_2
+    INTEGER, DIMENSION(:), ALLOCATABLE :: pages
+    LOGICAL, DIMENSION(:), ALLOCATABLE :: check_status
+    !=============================================================================================!
+    
+    ALLOCATE(check_status(SIZE(rules, 1)))
+
+    DO i = 1, SIZE(incorrect_pages, 1)
+        num_pages = incorrect_pages(i, 1)
+        ALLOCATE(pages(num_pages))
+        pages(:) = incorrect_pages(i, 2:num_pages + 1)
+        
+        check_status(:) = .FALSE.
+        DO WHILE(.NOT. ALL(check_status))
+            DO j = 1, SIZE(rules, 1)
+                index_1 = -1
+                index_2 = -1
+
+                DO k = 1, num_pages
+                    IF(pages(k) == rules(j, 1)) index_1 = k
+                    IF(pages(k) == rules(j, 2)) index_2 = k
+                ENDDO
+
+                IF(index_1 == -1 .OR. index_2 == -1) THEN
+                    check_status(j) = .TRUE.
+                    CYCLE
+                ENDIF
+
+                IF(index_1 > index_2) THEN
+                    pages(index_1) = rules(j, 2)
+                    pages(index_2) = rules(j, 1)
+                    check_status(j) = .FALSE.
+                ELSE
+                    check_status(j) = .TRUE.
+                ENDIF
+            ENDDO
+        ENDDO
+
+        incorrect_pages(i, 2:num_pages + 1) = pages(:)
+        DEALLOCATE(pages)
+    ENDDO
+
+    DEALLOCATE(check_status)
+
+END SUBROUTINE reorder_incorrect_updates
