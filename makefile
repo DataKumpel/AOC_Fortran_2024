@@ -8,6 +8,7 @@ DAY_05   = ./build/day_05.x
 DAY_06   = ./build/day_06.x
 DAY_07   = ./build/day_07.x
 DAY_08   = ./build/day_08.x
+DAY_09   = ./build/day_09.x
 
 
 day_01:
@@ -41,3 +42,7 @@ day_07:
 day_08:
 	$(COMPILER) day_08.f90 -o $(DAY_08) $(FLAGS)
 	$(DAY_08)
+
+day_09:
+	$(COMPILER) day_09.f90 -o $(DAY_09) $(FLAGS)
+	$(DAY_09)
